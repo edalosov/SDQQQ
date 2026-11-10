@@ -61,6 +61,7 @@
   .hex{font-family:ui-monospace, monospace;}
   .check{display:flex; gap:8px; align-items:center; font-size:13px; cursor:pointer; margin-bottom:6px;}
   .check input{accent-color:var(--accent);}
+  .sub-h{font-size:12px; text-transform:uppercase; letter-spacing:0.06em; margin:16px 0 8px; color:var(--muted);}
 </style>
 </head>
 <body>
@@ -119,42 +120,27 @@
     </div>
 
     <div class="card">
-      <h2>2 · Colours</h2>
-      <p>The flat painted colours that the ink is printed on.</p>
-      <div class="layer">
-        <input type="color" id="handsColor" value="#D9573B">
-        <div>
-          <b>Hands</b>
-          <div class="sub"><span class="hex" id="handsHex">#D9573B</span>
-            <select id="handsMode"><option value="flat">Flat colour</option><option value="shade">Keep shading</option><option value="none">Original</option></select>
-          </div>
-        </div>
-      </div>
+      <h2>2 · Print layers</h2>
+      <p>Three screens, printed in this order. Each one is a single flat colour.</p>
       <div class="layer">
         <input type="color" id="bgColor" value="#1F3A5F">
-        <div>
-          <b>Background</b>
-          <div class="sub"><span class="hex" id="bgHex">#1F3A5F</span>
-            <select id="bgMode"><option value="flat">Flat colour</option><option value="shade">Keep shading</option><option value="none">Original</option></select>
-          </div>
-        </div>
+        <div><b>1 · Background</b><div class="sub"><span class="hex" id="bgHex">#1F3A5F</span></div></div>
       </div>
-    </div>
-
-    <div class="card">
-      <h2>3 · Ink layer (screen)</h2>
-      <p>The photo becomes one black-and-white film. Wherever it's black, ink goes on top of the colours. No greys, just solid ink or dots.</p>
-      <label class="check"><input type="checkbox" id="inkOn" checked> Print the ink layer</label>
-      <div class="layer" style="padding-top:4px;">
+      <div class="layer">
+        <input type="color" id="handsColor" value="#D9573B">
+        <div><b>2 · Hands</b><div class="sub"><span class="hex" id="handsHex">#D9573B</span></div></div>
+      </div>
+      <div class="layer">
         <input type="color" id="inkColor" value="#141414">
-        <div><b>Ink</b><div class="sub"><span class="hex" id="inkHex">#141414</span></div></div>
-      </div>
-      <div class="row">
-        <label class="lbl">Film</label>
-        <div class="seg" id="filmSeg" style="width:100%;">
-          <button data-film="solid" class="on" style="flex:1;">Solid</button>
-          <button data-film="halftone" style="flex:1;">Halftone dots</button>
+        <div><b>3 · Ink (photo film, on top)</b><div class="sub"><span class="hex" id="inkHex">#141414</span></div>
+          <label class="check" style="margin:6px 0 0;"><input type="checkbox" id="inkLink"> Same colour as background</label>
         </div>
+      </div>
+
+      <h3 class="sub-h">Ink film</h3>
+      <div class="seg" id="filmSeg" style="width:100%;">
+        <button data-film="solid" class="on" style="flex:1;">Solid</button>
+        <button data-film="halftone" style="flex:1;">Halftone dots</button>
       </div>
       <div class="row">
         <label class="lbl">Ink on hands <span id="inkHandsVal">45</span></label>
@@ -175,7 +161,10 @@
     </div>
 
     <div class="card">
+      <h2>Download</h2>
       <button class="btn primary" id="download">Download PNG</button>
+      <button class="btn row" id="downloadKit">Download print files (.zip)</button>
+      <p style="margin:10px 0 0;">The zip has a black-and-white film for each screen (300&nbsp;DPI, with registration marks), a transparent colour PNG for each layer, and a recipe.</p>
     </div>
   </aside>
 </main>

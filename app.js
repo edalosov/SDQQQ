@@ -9,7 +9,6 @@ const EXPORT_MAX = 4000; // long edge for the downloaded PNG
 let photo = null;          // HTMLImageElement
 let W = 0, H = 0;          // working size
 let photoCanvas = null;    // photo at working size
-let lum = null;            // Float32Array 0..1 luminance at working size
 let maskCanvas = null;     // white = hands, black = background (working size)
 let maskCtx = null;
 const undo = [];
@@ -98,7 +97,6 @@ $('file').addEventListener('change', async (e) => {
   W = Math.round(img.width * s); H = Math.round(img.height * s);
   photoCanvas = makeCanvas(W, H);
   ctx2d(photoCanvas).drawImage(img, 0, 0, W, H);
-  lum = luminance(photoCanvas);
   maskCanvas = makeCanvas(W, H); maskCtx = ctx2d(maskCanvas);
   maskCtx.fillStyle = '#000'; maskCtx.fillRect(0, 0, W, H);
   undo.length = 0;
@@ -235,7 +233,7 @@ function redraw() {
 function draw() {
   if (view === 'original') { viewCtx.drawImage(photoCanvas, 0, 0); return; }
   const mask = maskAt(W, H);
-  if (view === 'result') { viewCtx.putImageData(composite(photoCanvas, lum, mask), 0, 0); return; }
+  if (view === 'result') { viewCtx.putImageData(composite(photoCanvas, mask), 0, 0); return; }
   // selection overlay
   const src = ctx2d(photoCanvas).getImageData(0, 0, W, H), d = src.data;
   for (let i = 0; i < W * H; i++) {
@@ -249,24 +247,24 @@ function draw() {
   viewCtx.putImageData(src, 0, 0);
 }
 
-// ---------- step 2: colouring ----------
-function bindColour(id, hexId) {
-  $(id).addEventListener('input', () => { $(hexId).textContent = $(id).value.toUpperCase(); if (view !== 'result') setView('result'); else redraw(); });
-}
-bindColour('handsColor', 'handsHex');
-bindColour('bgColor', 'bgHex');
-for (const id of ['handsMode', 'bgMode']) $(id).addEventListener('change', () => { if (view !== 'result') setView('result'); else redraw(); });
-
-// "Keep shading": the layer's average tone becomes exactly the chosen colour;
-// darker tones go towards black, lighter tones towards white.
-function colourLayer(rgb, mode, l, mean) {
-  if (mode === 'flat') return rgb;
-  if (l <= mean) { const k = l / mean; return [rgb[0] * k, rgb[1] * k, rgb[2] * k]; }
-  const k = (l - mean) / (1 - mean);
-  return [rgb[0] + (255 - rgb[0]) * k, rgb[1] + (255 - rgb[1]) * k, rgb[2] + (255 - rgb[2]) * k];
-}
-// ---------- step 3: the ink layer (one screen) ----------
+// ---------- step 2: print layers (background → hands → ink) ----------
 let film = 'solid';
+function showResult() { if (view !== 'result') setView('result'); else redraw(); }
+const colours = () => ({
+  bg: $('bgColor').value.toUpperCase(),
+  hands: $('handsColor').value.toUpperCase(),
+  ink: ($('inkLink').checked ? $('bgColor') : $('inkColor')).value.toUpperCase(),
+});
+function syncInkLink() {
+  const linked = $('inkLink').checked;
+  if (linked) $('inkColor').value = $('bgColor').value;
+  $('inkColor').disabled = linked;
+  $('inkHex').textContent = $('inkColor').value.toUpperCase();
+}
+for (const [id, hexId] of [['bgColor', 'bgHex'], ['handsColor', 'handsHex'], ['inkColor', 'inkHex']]) {
+  $(id).addEventListener('input', () => { $(hexId).textContent = $(id).value.toUpperCase(); syncInkLink(); showResult(); });
+}
+$('inkLink').addEventListener('change', () => { syncInkLink(); showResult(); });
 document.querySelectorAll('#filmSeg button').forEach((b) => b.addEventListener('click', () => {
   film = b.dataset.film;
   document.querySelectorAll('#filmSeg button').forEach((x) => x.classList.toggle('on', x === b));
@@ -276,9 +274,6 @@ document.querySelectorAll('#filmSeg button').forEach((b) => b.addEventListener('
 for (const [id, out] of [['inkHands', 'inkHandsVal'], ['inkBg', 'inkBgVal'], ['inkSmooth', 'inkSmoothVal'], ['dotSize', 'dotSizeVal']]) {
   $(id).addEventListener('input', () => { $(out).textContent = $(id).value; showResult(); });
 }
-$('inkColor').addEventListener('input', () => { $('inkHex').textContent = $('inkColor').value.toUpperCase(); showResult(); });
-$('inkOn').addEventListener('change', showResult);
-function showResult() { if (view !== 'result') setView('result'); else redraw(); }
 
 // Luminance after a blur: blur first, then threshold, gives the clumpy shapes of an
 // enlarged photo stencil instead of pixel noise.
@@ -341,47 +336,173 @@ function inkCoverage(srcCanvas, mask) {
   return out;
 }
 
-function composite(srcCanvas, L, mask) {
-  const w = srcCanvas.width, h = srcCanvas.height;
-  const out = ctx2d(srcCanvas).getImageData(0, 0, w, h), d = out.data;
-  // average tone of each layer, weighted by the mask
-  let sh = 0, wh = 0, sb = 0, wb = 0;
-  for (let i = 0; i < w * h; i++) { const m = mask[i]; sh += L[i] * m; wh += m; sb += L[i] * (1 - m); wb += 1 - m; }
-  const meanH = Math.min(0.95, Math.max(0.05, wh ? sh / wh : 0.5));
-  const meanB = Math.min(0.95, Math.max(0.05, wb ? sb / wb : 0.5));
-  const hRgb = hexToRgb($('handsColor').value), bRgb = hexToRgb($('bgColor').value);
-  const hMode = $('handsMode').value, bMode = $('bgMode').value;
+// The three screens at w×h: hands coverage (0..1) and ink coverage (0..1).
+function layersAt(srcCanvas, mask) {
+  return { hands: mask, ink: inkCoverage(srcCanvas, mask) };
+}
+
+// Print order: background flood → hands → ink, each opaque.
+function composite(srcCanvas, mask) {
+  const w = srcCanvas.width, h = srcCanvas.height, col = colours();
+  const { ink } = layersAt(srcCanvas, mask);
+  const B = hexToRgb(col.bg), Hc = hexToRgb(col.hands), K = hexToRgb(col.ink);
+  const out = new ImageData(w, h), d = out.data;
   for (let i = 0; i < w * h; i++) {
-    const j = i * 4, l = L[i], m = mask[i];
-    const orig = [d[j], d[j + 1], d[j + 2]];
-    const hc = hMode === 'none' ? orig : colourLayer(hRgb, hMode, l, meanH);
-    const bc = bMode === 'none' ? orig : colourLayer(bRgb, bMode, l, meanB);
-    d[j] = bc[0] + (hc[0] - bc[0]) * m;
-    d[j + 1] = bc[1] + (hc[1] - bc[1]) * m;
-    d[j + 2] = bc[2] + (hc[2] - bc[2]) * m;
-  }
-  if ($('inkOn').checked) {
-    const ink = inkCoverage(srcCanvas, mask), k = hexToRgb($('inkColor').value);
-    for (let i = 0; i < w * h; i++) {
-      const a = ink[i]; if (!a) continue;
-      const j = i * 4; // opaque ink printed on top of the colours
-      d[j] += (k[0] - d[j]) * a; d[j + 1] += (k[1] - d[j + 1]) * a; d[j + 2] += (k[2] - d[j + 2]) * a;
+    const m = mask[i], a = ink[i], j = i * 4;
+    for (let c = 0; c < 3; c++) {
+      const v = B[c] + (Hc[c] - B[c]) * m;
+      d[j + c] = v + (K[c] - v) * a;
     }
+    d[j + 3] = 255;
   }
   return out;
 }
 
-$('download').addEventListener('click', async () => {
+// ---------- downloads ----------
+function exportSize() {
+  const s = Math.min(1, EXPORT_MAX / Math.max(photo.width, photo.height));
+  return { w: Math.round(photo.width * s), h: Math.round(photo.height * s) };
+}
+function exportSource() {
+  const { w, h } = exportSize();
+  const c = makeCanvas(w, h); ctx2d(c).drawImage(photo, 0, 0, w, h);
+  return c;
+}
+async function busyButton(btn, label, fn) {
   if (!photo) return alert('Load a photo first.');
-  const btn = $('download'); btn.disabled = true; btn.textContent = 'Preparing…';
+  const txt = btn.textContent; btn.disabled = true; btn.textContent = label;
   await new Promise((r) => setTimeout(r, 20));
-  try {
-    const s = Math.min(1, EXPORT_MAX / Math.max(photo.width, photo.height));
-    const w = Math.round(photo.width * s), h = Math.round(photo.height * s);
-    const c = makeCanvas(w, h); ctx2d(c).drawImage(photo, 0, 0, w, h);
-    ctx2d(c).putImageData(composite(c, luminance(c), maskAt(w, h)), 0, 0);
-    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'si-dios-quiere.png'; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  } finally { btn.disabled = false; btn.textContent = 'Download PNG'; }
-});
+  try { await fn(); } catch (e) { console.error(e); alert('Export failed: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = txt; }
+}
+function save(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+const canvasBlob = (c) => new Promise((r) => c.toBlob(r, 'image/png'));
+
+$('download').addEventListener('click', () => busyButton($('download'), 'Preparing…', async () => {
+  const c = exportSource(), w = c.width, h = c.height;
+  ctx2d(c).putImageData(composite(c, maskAt(w, h)), 0, 0);
+  save(new Blob([await pngBytes(c, 300)], { type: 'image/png' }), 'si-dios-quiere.png');
+}));
+
+// One colour layer as a transparent PNG (for Photoshop/Procreate etc.).
+function colourLayerCanvas(w, h, rgb, alpha) {
+  const c = makeCanvas(w, h), img = new ImageData(w, h), d = img.data;
+  for (let i = 0; i < w * h; i++) {
+    const j = i * 4; d[j] = rgb[0]; d[j + 1] = rgb[1]; d[j + 2] = rgb[2];
+    d[j + 3] = alpha ? Math.round(alpha[i] * 255) : 255;
+  }
+  ctx2d(c).putImageData(img, 0, 0);
+  return c;
+}
+
+// A film: black = ink goes through, white = blocked. Hard edges, white margin,
+// registration crosshairs in the margin, and the screen's name.
+function filmCanvas(w, h, inkAt, title) {
+  const m = Math.round(Math.max(w, h) * 0.06);
+  const c = makeCanvas(w + 2 * m, h + 2 * m), cx = ctx2d(c);
+  cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
+  const img = cx.getImageData(m, m, w, h), d = img.data;
+  for (let i = 0; i < w * h; i++) if (inkAt(i)) { const j = i * 4; d[j] = d[j + 1] = d[j + 2] = 0; }
+  cx.putImageData(img, m, m);
+  const len = m * 0.35, lw = Math.max(2, Math.round(m / 60));
+  cx.strokeStyle = '#000'; cx.lineWidth = lw;
+  const marks = [[m / 2, m / 2], [c.width - m / 2, m / 2], [m / 2, c.height - m / 2], [c.width - m / 2, c.height - m / 2],
+    [c.width / 2, m / 2], [c.width / 2, c.height - m / 2], [m / 2, c.height / 2], [c.width - m / 2, c.height / 2]];
+  for (const [x, y] of marks) {
+    cx.beginPath(); cx.moveTo(x - len, y); cx.lineTo(x + len, y); cx.moveTo(x, y - len); cx.lineTo(x, y + len); cx.stroke();
+    cx.beginPath(); cx.arc(x, y, len * 0.45, 0, Math.PI * 2); cx.stroke();
+  }
+  cx.fillStyle = '#000'; cx.font = `${Math.round(m * 0.22)}px sans-serif`;
+  cx.fillText(title, m, c.height - m * 0.25);
+  return c;
+}
+
+// Shrinks the hands area by `px` (used so the background screen slightly
+// overlaps under the hands — a "trap" — and no bare paper shows at the edge).
+function erode(mask, w, h, px) {
+  const src = makeCanvas(w, h), img = new ImageData(w, h);
+  for (let i = 0; i < w * h; i++) { const v = mask[i] >= 0.5 ? 255 : 0; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; }
+  ctx2d(src).putImageData(img, 0, 0);
+  const c = makeCanvas(w, h), cx = ctx2d(c);
+  cx.filter = `blur(${px}px)`; cx.drawImage(src, 0, 0);
+  const d = cx.getImageData(0, 0, w, h).data, out = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) out[i] = d[i * 4] > 250 ? 1 : 0;
+  return out;
+}
+
+$('downloadKit').addEventListener('click', () => busyButton($('downloadKit'), 'Preparing files…', async () => {
+  const src = exportSource(), w = src.width, h = src.height;
+  const mask = maskAt(w, h), { ink } = layersAt(src, mask), col = colours();
+  const files = [];
+  const add = async (name, c) => files.push({ name, data: await pngBytes(c, 300) });
+  const trapPx = Math.max(2, Math.round(w / 600)); // ≈0.4 mm at 300 DPI on a 2000px image
+  const handsCore = erode(mask, w, h, trapPx);
+
+  const preview = makeCanvas(w, h); ctx2d(preview).putImageData(composite(src, mask), 0, 0);
+  await add('preview.png', preview);
+  await add('layers/1-background.png', colourLayerCanvas(w, h, hexToRgb(col.bg), null));
+  await add('layers/2-hands.png', colourLayerCanvas(w, h, hexToRgb(col.hands), mask));
+  await add('layers/3-ink.png', colourLayerCanvas(w, h, hexToRgb(col.ink), ink));
+  await add('films/film-1-background.png', filmCanvas(w, h, (i) => !handsCore[i], `1 BACKGROUND  ${col.bg}`));
+  await add('films/film-2-hands.png', filmCanvas(w, h, (i) => mask[i] >= 0.5, `2 HANDS  ${col.hands}`));
+  await add('films/film-3-ink.png', filmCanvas(w, h, (i) => ink[i] >= 0.5, `3 INK  ${col.ink}`));
+
+  const inch = (px) => (px / 300).toFixed(2), cm = (px) => (px / 300 * 2.54).toFixed(1);
+  const cellPx = parseInt($('dotSize').value) * w / 1000;
+  const lines = [
+    'SI DIOS QUIERE — PRINT RECIPE', new Date().toString(), '',
+    `Image size: ${w} x ${h} px = ${cm(w)} x ${cm(h)} cm (${inch(w)} x ${inch(h)} in) at 300 DPI.`,
+    'Films include a white margin with registration marks; print every film at 100% so the marks line up.', '',
+    'PRINT ORDER',
+    `  1. film-1-background.png   colour ${col.bg}`,
+    `     Everything except the hands. It reaches ${trapPx}px (~${(trapPx / 300 * 25.4).toFixed(1)} mm) under the hands so no paper shows at the edge.`,
+    `  2. film-2-hands.png        colour ${col.hands}`,
+    `  3. film-3-ink.png          colour ${col.ink}${$('inkLink').checked ? '  (same as background)' : ''}`,
+    `     ${film === 'halftone' ? `Halftone dots, ${cellPx.toFixed(1)}px cell ≈ ${(300 / cellPx).toFixed(0)} lines per inch at 45°.` : 'Solid stencil.'}` +
+      ` Ink on hands ${$('inkHands').value}%, ink on background ${$('inkBg').value}%.`,
+    '',
+    'FILMS (films/): black = ink passes through, white = blocked. Print them on transparency film, or use them as',
+    '  positives for photo-emulsion screens. You can also cut stencils from them by hand.',
+    'LAYERS (layers/): each screen as a transparent PNG in its colour. Stack 1 → 2 → 3 in any editor to rebuild preview.png.',
+    'Hex colours are screen references. Match the real inks by eye.',
+  ];
+  files.push({ name: 'recipe.txt', data: new TextEncoder().encode(lines.join('\n')) });
+  save(makeZip(files), 'si-dios-quiere-print-files.zip');
+}));
+
+// ---------- PNG with DPI + a tiny zip writer (store, no compression) ----------
+let crcTable = null;
+function crc32(buf) {
+  if (!crcTable) { crcTable = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crcTable[n] = c >>> 0; } }
+  let c = -1; for (let i = 0; i < buf.length; i++) c = (c >>> 8) ^ crcTable[(c ^ buf[i]) & 255];
+  return (c ^ -1) >>> 0;
+}
+const cat = (arrs) => { const o = new Uint8Array(arrs.reduce((s, a) => s + a.length, 0)); let p = 0; for (const a of arrs) { o.set(a, p); p += a.length; } return o; };
+const be32 = (n) => new Uint8Array([n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+const le16 = (n) => new Uint8Array([n & 255, (n >>> 8) & 255]);
+const le32 = (n) => new Uint8Array([n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]);
+// Canvas PNGs have no physical size; add a pHYs chunk so they open at 300 DPI.
+async function pngBytes(canvas, dpi) {
+  const bytes = new Uint8Array(await (await canvasBlob(canvas)).arrayBuffer());
+  const ppm = Math.round(dpi / 0.0254), type = new TextEncoder().encode('pHYs');
+  const body = cat([be32(ppm), be32(ppm), new Uint8Array([1])]);
+  const chunk = cat([be32(body.length), type, body, be32(crc32(cat([type, body])))]);
+  const at = 8 + 8 + 13 + 4; // signature + IHDR
+  return cat([bytes.subarray(0, at), chunk, bytes.subarray(at)]);
+}
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), crc = crc32(f.data), n = f.data.length;
+    const local = cat([le32(0x04034b50), le16(20), le16(0x0800), le16(0), le16(0), le16(0x21), le32(crc), le32(n), le32(n), le16(name.length), le16(0), name]);
+    parts.push(local, f.data);
+    central.push(cat([le32(0x02014b50), le16(20), le16(20), le16(0x0800), le16(0), le16(0), le16(0x21), le32(crc), le32(n), le32(n), le16(name.length), le16(0), le16(0), le16(0), le16(0), le32(0), le32(off), name]));
+    off += local.length + n;
+  }
+  const cd = cat(central);
+  const end = cat([le32(0x06054b50), le16(0), le16(0), le16(files.length), le16(files.length), le32(cd.length), le32(off), le16(0)]);
+  return new Blob([...parts, cd, end], { type: 'application/zip' });
+}

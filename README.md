@@ -3,8 +3,12 @@
 Browser tool, built step by step.
 
 **Step 1: Separate the hands.** Click on the hands and an AI model selects them. Click again to add missed parts, or use the brush, undo and invert for fixes.
-**Step 2: Colour each layer.** Pick one colour for the hands and one for the background. Each layer can keep its shading, be a flat colour, or stay original. Download a PNG.
-**Step 3: Ink layer (screen).** The photo becomes one black-and-white film, printed in opaque ink over the flat colours. You can choose solid stencil or halftone dots. Ink amount is set separately for the hands and the background, as a share of each layer's own tones, so photos with different lighting behave the same.
+**Step 2: Print layers.** There are three flat-colour screens, printed in order: 1 background, 2 hands, 3 ink (the photo film, on top). The ink can share the background's colour. The film is a solid stencil or halftone dots, and ink amount is set separately for hands and background.
+
+**Download.** You can save a PNG, or a print-files zip containing:
+- black-and-white films for each screen, 300 DPI, with registration marks (the background reaches slightly under the hands so no paper shows at the edge);
+- a transparent colour PNG for each layer;
+- a recipe with print order, colours, size and halftone lines per inch.
 
 Everything runs locally in the browser. Photos are never uploaded.
 
