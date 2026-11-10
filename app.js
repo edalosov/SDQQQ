@@ -263,7 +263,7 @@ function draw() {
 }
 
 // ---------- step 2: print layers (background → hands → ink) ----------
-let film = 'solid';
+let film = 'halftone';
 function showResult() { if (view !== 'result') setView('result'); else redraw(); }
 const colours = () => ({
   bg: $('bgColor').value.toUpperCase(),
@@ -346,7 +346,8 @@ function farApart(a, b) {
   const lum = (c) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
   return dist > 140 && Math.abs(lum(A) - lum(B)) > 40;
 }
-$('randomColours').addEventListener('click', () => {
+$('randomColours').addEventListener('click', randomizeColours);
+function randomizeColours() {
   const free = freeLayers();
   if (!free.length) return;
   const fixed = ['bgColor', 'handsColor', 'inkColor']
@@ -359,7 +360,7 @@ $('randomColours').addEventListener('click', () => {
   }
   if (!best) best = free.map(randomHex); // locked colours too close to satisfy: just pick freely
   setColours(Object.fromEntries(free.map((id, i) => [id, best[i]])));
-});
+}
 
 // Swap the current colours between the unlocked layers (always a new arrangement).
 $('shuffleColours').addEventListener('click', () => {
@@ -417,9 +418,10 @@ document.querySelectorAll('input[data-rnd]').forEach((el) => {
   dice.addEventListener('click', roll);
   rollers.push({ el, roll });
 });
-$('rollInk').addEventListener('click', () => {
-  for (const r of rollers) if (!r.el.closest('.row').hidden) r.roll();
-});
+function rollInkFilm() { for (const r of rollers) if (!r.el.closest('.row').hidden) r.roll(); }
+$('rollInk').addEventListener('click', rollInkFilm);
+// Everything at once: new colours for unlocked layers + every ink film slider within its range.
+$('randomAll').addEventListener('click', () => { randomizeColours(); rollInkFilm(); });
 
 // Luminance after a blur: blur first, then threshold, gives the clumpy shapes of an
 // enlarged photo stencil instead of pixel noise.
