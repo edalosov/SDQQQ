@@ -58,6 +58,7 @@
   .file{display:block; border:1.5px dashed var(--border); border-radius:8px; padding:14px; text-align:center; cursor:pointer; color:var(--muted); font-size:13px;}
   .file:hover{border-color:#BDBAB3; color:var(--text);}
   .file input{display:none;}
+  .file.drag{border-color:var(--sel); color:var(--sel); background:rgba(47,107,255,.06);}
   .status{font-size:12px; color:var(--muted); margin-top:8px; min-height:1em;}
 
   .layer{display:grid; grid-template-columns:44px 1fr; gap:12px; align-items:center; padding:10px 0;}
@@ -106,7 +107,7 @@
       <div class="hint" id="hint">Load a photo to start.</div>
     </div>
     <div class="canvas-box" id="box">
-      <div id="drop">Load a photo on the right →</div>
+      <div id="drop">Choose or drop a photo in the Photo box →</div>
       <canvas id="view" hidden></canvas>
       <div id="cursor"></div>
       <div id="busy">Selecting…</div>
@@ -116,7 +117,7 @@
   <aside>
     <div class="card">
       <h2>Photo</h2>
-      <label class="file"><span id="fileName">Choose a photo…</span><input type="file" id="file" accept="image/*"></label>
+      <label class="file"><span id="fileName">Drop a photo here or click to choose</span><input type="file" id="file" accept="image/*"></label>
     </div>
 
     <div class="card">
@@ -161,6 +162,7 @@
           <label class="check" style="margin:6px 0 0;"><input type="checkbox" id="inkLink"> Same colour as background</label>
         </div>
       </div>
+      <button class="btn row" id="shuffleColours">🔀 Shuffle colours between layers</button>
 
       <h3 class="sub-h">Ink film</h3>
       <div class="seg" id="filmSeg" style="width:100%;">
@@ -169,19 +171,19 @@
       </div>
       <div class="row">
         <label class="lbl">Ink on hands <span id="inkHandsVal">45</span></label>
-        <input type="range" id="inkHands" min="0" max="100" value="45" data-rnd="20,70">
+        <input type="range" id="inkHands" min="0" max="100" value="45" data-rnd="40,70">
       </div>
       <div class="row">
-        <label class="lbl">Ink on background <span id="inkBgVal">55</span></label>
-        <input type="range" id="inkBg" min="0" max="100" value="55" data-rnd="30,80">
+        <label class="lbl">Ink on background <span id="inkBgVal">40</span></label>
+        <input type="range" id="inkBg" min="0" max="100" value="40" data-rnd="15,65">
       </div>
       <div class="row">
-        <label class="lbl">Detail ← → Blobby <span id="inkSmoothVal">3</span></label>
-        <input type="range" id="inkSmooth" min="0" max="20" value="3" data-rnd="0,10">
+        <label class="lbl">Detail ← → Blobby <span id="inkSmoothVal">1</span></label>
+        <input type="range" id="inkSmooth" min="0" max="20" value="1" data-rnd="0,2">
       </div>
       <div class="row" id="dotRow" hidden>
-        <label class="lbl">Dot size <span id="dotSizeVal">6</span></label>
-        <input type="range" id="dotSize" min="2" max="30" value="6" data-rnd="4,14">
+        <label class="lbl">Dot size <span id="dotSizeVal">5</span></label>
+        <input type="range" id="dotSize" min="2" max="30" value="5" data-rnd="3,6">
       </div>
       <button class="btn row" id="rollInk">🎲 Randomize ink film</button>
       <p style="margin:8px 0 0;">Each dice picks a value inside its blue range. To keep a slider fixed, drag both range handles to the same value.</p>

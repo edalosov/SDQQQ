@@ -85,9 +85,24 @@ function resample(arr, w, h, tw, th) {
 }
 
 // ---------- loading a photo ----------
-$('file').addEventListener('change', async (e) => {
-  const f = e.target.files[0];
-  if (!f) return;
+$('file').addEventListener('change', (e) => { if (e.target.files[0]) loadPhoto(e.target.files[0]); });
+
+// drag a photo onto the Photo box
+const fileBox = $('file').closest('.file');
+let dragDepth = 0;
+fileBox.addEventListener('dragenter', (e) => { e.preventDefault(); dragDepth++; fileBox.classList.add('drag'); });
+fileBox.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; fileBox.classList.remove('drag'); } });
+fileBox.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+fileBox.addEventListener('drop', (e) => {
+  e.preventDefault(); dragDepth = 0; fileBox.classList.remove('drag');
+  const f = [...e.dataTransfer.files].find((x) => x.type.startsWith('image/'));
+  if (f) loadPhoto(f); else alert('That isn\'t an image file.');
+});
+// a photo dropped anywhere else shouldn't make the browser navigate away from the page
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => e.preventDefault());
+
+async function loadPhoto(f) {
   const img = new Image();
   img.src = URL.createObjectURL(f);
   try { await img.decode(); } catch { alert('Could not read that image.'); return; }
@@ -104,7 +119,7 @@ $('file').addEventListener('change', async (e) => {
   $('drop').hidden = true;
   setView('select');
   getSegmenter().catch(() => {});
-});
+}
 
 function luminance(canvas) {
   const d = ctx2d(canvas).getImageData(0, 0, canvas.width, canvas.height).data;
@@ -286,6 +301,23 @@ for (const [id, hexId] of [['bgColor', 'bgHex'], ['handsColor', 'handsHex'], ['i
   hex.addEventListener('keydown', (e) => { if (e.key === 'Enter') hex.blur(); });
 }
 $('inkLink').addEventListener('change', () => { syncInkLink(); showResult(); });
+
+// Shuffle the current colours between the layers (always a different arrangement).
+// With "same colour as background" on, the ink follows the background, so only
+// background and hands swap.
+$('shuffleColours').addEventListener('click', () => {
+  const ids = $('inkLink').checked ? ['bgColor', 'handsColor'] : ['bgColor', 'handsColor', 'inkColor'];
+  const now = ids.map((id) => $(id).value.toLowerCase());
+  if (new Set(now).size < 2) return; // all the same colour: nothing to shuffle
+  let next;
+  do {
+    next = [...now];
+    for (let i = next.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [next[i], next[j]] = [next[j], next[i]]; }
+  } while (next.every((v, i) => v === now[i]));
+  ids.forEach((id, i) => { $(id).value = next[i]; });
+  for (const [id, hexId] of [['bgColor', 'bgHex'], ['handsColor', 'handsHex'], ['inkColor', 'inkHex']]) $(hexId).value = $(id).value.toUpperCase();
+  syncInkLink(); showResult();
+});
 document.querySelectorAll('#filmSeg button').forEach((b) => b.addEventListener('click', () => {
   film = b.dataset.film;
   document.querySelectorAll('#filmSeg button').forEach((x) => x.classList.toggle('on', x === b));
