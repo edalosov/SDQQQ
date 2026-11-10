@@ -61,6 +61,20 @@
   .hex{font-family:ui-monospace, monospace;}
   .check{display:flex; gap:8px; align-items:center; font-size:13px; cursor:pointer; margin-bottom:6px;}
   .check input{accent-color:var(--accent);}
+  .lbl .dice{border:1px solid var(--border); background:var(--surface); border-radius:6px; padding:0 6px; margin-left:8px; cursor:pointer; font-size:12px; line-height:18px;}
+  .lbl .dice:hover{border-color:#BDBAB3;}
+  .lbl:has(.dice){justify-content:flex-start; align-items:center;}
+  .lbl:has(.dice) > span{margin-left:auto;}
+  .dual{position:relative; height:20px; margin-top:2px;}
+  .dual .track, .dual .fill{position:absolute; top:8px; height:4px; border-radius:2px;}
+  .dual .track{left:0; right:0; background:var(--border);}
+  .dual .fill{background:var(--sel); opacity:.55;}
+  .dual input{position:absolute; inset:0; width:100%; height:20px; margin:0; background:none; pointer-events:none; -webkit-appearance:none; appearance:none;}
+  .dual input::-webkit-slider-runnable-track{background:transparent; height:20px;}
+  .dual input::-moz-range-track{background:transparent;}
+  .dual input::-webkit-slider-thumb{-webkit-appearance:none; pointer-events:auto; width:14px; height:14px; margin-top:3px; border-radius:50%; background:#fff; border:2px solid var(--sel); cursor:pointer;}
+  .dual input::-moz-range-thumb{pointer-events:auto; width:12px; height:12px; border-radius:50%; background:#fff; border:2px solid var(--sel); cursor:pointer;}
+  .range-txt{font-size:11px; color:var(--muted); margin-top:2px;}
   .sub-h{font-size:12px; text-transform:uppercase; letter-spacing:0.06em; margin:16px 0 8px; color:var(--muted);}
 </style>
 </head>
@@ -144,20 +158,22 @@
       </div>
       <div class="row">
         <label class="lbl">Ink on hands <span id="inkHandsVal">45</span></label>
-        <input type="range" id="inkHands" min="0" max="100" value="45">
+        <input type="range" id="inkHands" min="0" max="100" value="45" data-rnd="20,70">
       </div>
       <div class="row">
         <label class="lbl">Ink on background <span id="inkBgVal">55</span></label>
-        <input type="range" id="inkBg" min="0" max="100" value="55">
+        <input type="range" id="inkBg" min="0" max="100" value="55" data-rnd="30,80">
       </div>
       <div class="row">
         <label class="lbl">Detail ← → Blobby <span id="inkSmoothVal">3</span></label>
-        <input type="range" id="inkSmooth" min="0" max="20" value="3">
+        <input type="range" id="inkSmooth" min="0" max="20" value="3" data-rnd="0,10">
       </div>
       <div class="row" id="dotRow" hidden>
         <label class="lbl">Dot size <span id="dotSizeVal">6</span></label>
-        <input type="range" id="dotSize" min="2" max="30" value="6">
+        <input type="range" id="dotSize" min="2" max="30" value="6" data-rnd="4,14">
       </div>
+      <button class="btn row" id="rollInk">🎲 Randomize ink film</button>
+      <p style="margin:8px 0 0;">Each dice picks a value inside its blue range. To keep a slider fixed, drag both range handles to the same value.</p>
     </div>
 
     <div class="card">

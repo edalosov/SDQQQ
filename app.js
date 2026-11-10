@@ -275,6 +275,43 @@ for (const [id, out] of [['inkHands', 'inkHandsVal'], ['inkBg', 'inkBgVal'], ['i
   $(id).addEventListener('input', () => { $(out).textContent = $(id).value; showResult(); });
 }
 
+// ---------- randomizing the ink film sliders within a chosen range ----------
+const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const rollers = [];
+document.querySelectorAll('input[data-rnd]').forEach((el) => {
+  const [lo, hi] = el.dataset.rnd.split(',').map(Number);
+  const row = el.closest('.row'), lbl = row.querySelector('.lbl');
+  const dice = document.createElement('button');
+  dice.type = 'button'; dice.className = 'dice'; dice.textContent = '🎲'; dice.title = 'Random value inside the range';
+  lbl.querySelector('span').after(dice);
+
+  const dual = document.createElement('div'); dual.className = 'dual';
+  dual.innerHTML = '<div class="track"></div><div class="fill"></div>';
+  const mk = (v) => { const r = document.createElement('input'); r.type = 'range'; r.min = el.min; r.max = el.max; r.value = v; r.setAttribute('aria-label', 'Random range'); dual.appendChild(r); return r; };
+  const rMin = mk(lo), rMax = mk(hi);
+  const txt = document.createElement('div'); txt.className = 'range-txt';
+  el.after(dual, txt);
+
+  const span = Number(el.max) - Number(el.min);
+  const paint = () => {
+    const a = Number(rMin.value), b = Number(rMax.value);
+    const fill = dual.querySelector('.fill');
+    fill.style.left = ((a - el.min) / span * 100) + '%';
+    fill.style.width = Math.max(0.8, (b - a) / span * 100) + '%';
+    txt.textContent = a === b ? `Locked at ${a}` : `Random range ${a}–${b}`;
+  };
+  rMin.addEventListener('input', () => { if (+rMin.value > +rMax.value) rMax.value = rMin.value; paint(); });
+  rMax.addEventListener('input', () => { if (+rMax.value < +rMin.value) rMin.value = rMax.value; paint(); });
+  paint();
+
+  const roll = () => { el.value = randInt(+rMin.value, +rMax.value); el.dispatchEvent(new Event('input')); };
+  dice.addEventListener('click', roll);
+  rollers.push({ el, roll });
+});
+$('rollInk').addEventListener('click', () => {
+  for (const r of rollers) if (!r.el.closest('.row').hidden) r.roll();
+});
+
 // Luminance after a blur: blur first, then threshold, gives the clumpy shapes of an
 // enlarged photo stencil instead of pixel noise.
 function blurredLuminance(srcCanvas, px) {

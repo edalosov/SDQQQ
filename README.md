@@ -3,7 +3,7 @@
 Browser tool, built step by step.
 
 **Step 1: Separate the hands.** Click on the hands and an AI model selects them. Click again to add missed parts, or use the brush, undo and invert for fixes.
-**Step 2: Print layers.** There are three flat-colour screens, printed in order: 1 background, 2 hands, 3 ink (the photo film, on top). The ink can share the background's colour. The film is a solid stencil or halftone dots, and ink amount is set separately for hands and background.
+**Step 2: Print layers.** There are three flat-colour screens, printed in order: 1 background, 2 hands, 3 ink (the photo film, on top). The ink can share the background's colour. The film is a solid stencil or halftone dots, and ink amount is set separately for hands and background. Each ink-film slider has a dice and a random range (min–max); "Randomize ink film" rolls them all, and a range with both handles together locks that slider.
 
 **Download.** You can save a PNG, or a print-files zip containing:
 - black-and-white films for each screen, 300 DPI, with registration marks (the background reaches slightly under the hands so no paper shows at the edge);
