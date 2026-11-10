@@ -11,22 +11,33 @@
   }
   *{box-sizing:border-box;}
   body{margin:0; background:var(--bg); color:var(--text); font:14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;}
-  header{padding:18px 24px; border-bottom:1px solid var(--border); background:var(--surface); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
+  header{padding:12px 24px; border-bottom:1px solid var(--border); background:var(--surface); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
   header h1{font-size:18px; margin:0; letter-spacing:-0.01em;}
   header span{color:var(--muted); font-size:13px;}
 
-  main{display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:20px; padding:20px 24px; max-width:1600px; margin:0 auto;}
+  main{display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:20px; padding:20px 24px; max-width:1900px; margin:0 auto;}
+  @media (min-width:1200px){ main{grid-template-columns:minmax(0,1fr) 680px;} }
   @media (max-width:900px){ main{grid-template-columns:minmax(0,1fr); padding:16px;} }
 
   .stage{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:12px; min-width:0;}
   .stage-top{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
+  .stage-title{display:none; font-size:17px; margin:0; letter-spacing:-0.01em;}
+  @media (min-width:1200px){
+    header{display:none;}            /* the title moves into the image bar to save height */
+    .stage-title{display:block;}
+    main{padding-top:14px; padding-bottom:14px;}
+    .canvas-box canvas{max-height:calc(100vh - 120px);}
+    .grid2.tools{grid-template-columns:repeat(4,1fr);}
+    .grid2.tools .btn{padding:8px 4px;}
+    .tools .long{display:none;}
+  }
   .seg{display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden;}
   .seg button{border:0; background:transparent; padding:7px 12px; font:inherit; font-size:13px; cursor:pointer; color:var(--muted);}
   .seg button + button{border-left:1px solid var(--border);}
   .seg button.on{background:var(--accent); color:var(--accent-text);}
   .hint{color:var(--muted); font-size:13px;}
   .canvas-box{position:relative; display:flex; justify-content:center; align-items:center; min-height:420px; background:#EAE8E3; border-radius:8px; overflow:hidden;}
-  .canvas-box canvas{max-width:100%; max-height:calc(100vh - 150px); height:auto; width:auto; display:block; touch-action:none;}
+  .canvas-box canvas{max-width:100%; max-height:calc(100vh - 190px); height:auto; width:auto; display:block; touch-action:none;}
   /* keep the image in view while the controls scroll */
   @media (min-width:901px){ .stage{position:sticky; top:16px; align-self:start;} }
   @media (max-width:900px){
@@ -42,9 +53,12 @@
   #busy{position:absolute; inset:0; background:rgba(255,255,255,.6); display:none; align-items:center; justify-content:center; font-weight:600;}
 
   aside{display:flex; flex-direction:column; gap:16px;}
-  .card{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px;}
+  aside .col{display:flex; flex-direction:column; gap:16px; min-width:0;}
+  /* wide screens: two control columns beside the image, so nothing needs scrolling */
+  @media (min-width:1200px){ aside{flex-direction:row; align-items:flex-start;} aside .col{flex:1;} }
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px;}
   .card h2{font-size:13px; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 4px;}
-  .card p{margin:0 0 12px; color:var(--muted); font-size:13px;}
+  .card p{margin:0 0 10px; color:var(--muted); font-size:13px;}
   .btn{display:inline-flex; justify-content:center; align-items:center; gap:6px; width:100%; padding:9px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); font:inherit; font-size:13px; cursor:pointer; color:var(--text);}
   .btn:hover:not(:disabled){border-color:#BDBAB3;}
   .btn:disabled{opacity:.45; cursor:default;}
@@ -53,20 +67,21 @@
   .btn.on{border-color:var(--sel); box-shadow:inset 0 0 0 1px var(--sel); color:var(--sel); font-weight:600;}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
   .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
-  .row{margin-top:12px;}
+  .row{margin-top:10px;}
   label.lbl{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:4px;}
   input[type=range]{width:100%; accent-color:var(--accent);}
-  .file{display:block; border:1.5px dashed var(--border); border-radius:8px; padding:14px; text-align:center; cursor:pointer; color:var(--muted); font-size:13px;}
+  .file{display:block; border:1.5px dashed var(--border); border-radius:8px; padding:11px; text-align:center; cursor:pointer; color:var(--muted); font-size:13px;}
   .file:hover{border-color:#BDBAB3; color:var(--text);}
   .file input{display:none;}
   .file.drag{border-color:var(--sel); color:var(--sel); background:rgba(47,107,255,.06);}
   .status{font-size:12px; color:var(--muted); margin-top:8px; min-height:1em;}
 
-  .layer{display:grid; grid-template-columns:44px 1fr auto; gap:12px; align-items:center; padding:10px 0;}
+  .layer{display:grid; grid-template-columns:36px 1fr auto; gap:10px; align-items:center; padding:7px 0;}
+  .layer .name{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .layer + .layer{border-top:1px solid var(--border);}
-  .layer input[type=color]{width:44px; height:44px; border:1px solid var(--border); border-radius:8px; padding:2px; background:none; cursor:pointer;}
+  .layer input[type=color]{width:36px; height:36px; border:1px solid var(--border); border-radius:8px; padding:2px; background:none; cursor:pointer;}
   .layer b{display:block; font-size:14px;}
-  .lock{width:34px; height:34px; border:1px solid var(--border); border-radius:8px; background:var(--surface); cursor:pointer; font-size:15px; align-self:start;}
+  .lock{width:30px; height:30px; font-size:14px; border:1px solid var(--border); border-radius:8px; background:var(--surface); cursor:pointer; font-size:15px; align-self:start;}
   .lock:hover:not(:disabled){border-color:#BDBAB3;}
   .lock[aria-pressed="true"]{border-color:var(--sel); background:rgba(47,107,255,.08);}
   .lock:disabled{opacity:.35; cursor:default;}
@@ -91,7 +106,7 @@
   .dual input::-moz-range-track{background:transparent;}
   .dual input::-webkit-slider-thumb{-webkit-appearance:none; pointer-events:auto; width:14px; height:14px; margin-top:3px; border-radius:50%; background:#fff; border:2px solid var(--sel); cursor:pointer;}
   .dual input::-moz-range-thumb{pointer-events:auto; width:12px; height:12px; border-radius:50%; background:#fff; border:2px solid var(--sel); cursor:pointer;}
-  .range-txt{font-size:11px; color:var(--muted); margin-top:2px;}
+  .range-txt{font-size:11px; color:var(--sel); margin-left:6px; font-weight:500;}
   .sub-h{font-size:12px; text-transform:uppercase; letter-spacing:0.06em; margin:16px 0 8px; color:var(--muted);}
 </style>
 </head>
@@ -104,6 +119,7 @@
 <main>
   <section class="stage">
     <div class="stage-top">
+      <h1 class="stage-title">Si Dios Quiere</h1>
       <div class="seg" id="viewSeg">
         <button data-view="select" class="on">Selection</button>
         <button data-view="result">Colour result</button>
@@ -120,27 +136,22 @@
   </section>
 
   <aside>
+   <div class="col">
     <div class="card">
-      <h2>Photo</h2>
+      <h2>1 · Photo &amp; hands</h2>
       <label class="file"><span id="fileName">Drop a photo here or click to choose</span><input type="file" id="file" accept="image/*"></label>
-    </div>
-
-    <div class="card">
-      <h2>1 · Separate the hands</h2>
-      <p>Click on the hands and the AI selects them. Click each hand if it only picks up one. Use the brush for small fixes.</p>
-      <div class="grid2">
-        <button class="btn tool on" data-tool="add-click">＋ Click to add</button>
-        <button class="btn tool" data-tool="sub-click">− Click to remove</button>
-        <button class="btn tool" data-tool="add-brush">＋ Brush</button>
-        <button class="btn tool" data-tool="sub-brush">− Brush</button>
+      <p style="margin-top:10px;">Click the hands to select them; click again to add missed parts. Brush for small fixes.</p>
+      <div class="grid2 tools">
+        <button class="btn tool on" data-tool="add-click" title="Click on the photo to add what you click to the hands">＋ Click<span class="long"> to add</span></button>
+        <button class="btn tool" data-tool="sub-click" title="Click on the photo to remove what you click from the hands">− Click<span class="long"> to remove</span></button>
+        <button class="btn tool" data-tool="add-brush" title="Paint to add to the hands">＋ Brush</button>
+        <button class="btn tool" data-tool="sub-brush" title="Paint to remove from the hands">− Brush</button>
       </div>
-      <div class="row">
-        <label class="lbl">Brush size <span id="brushVal">30</span></label>
-        <input type="range" id="brush" min="3" max="150" value="30">
-      </div>
-      <div class="row">
-        <label class="lbl">Edge softness <span id="softVal">1</span></label>
-        <input type="range" id="soft" min="0" max="10" value="1">
+      <div class="grid2 row">
+        <div><label class="lbl">Brush size <span id="brushVal">30</span></label>
+        <input type="range" id="brush" min="3" max="150" value="30"></div>
+        <div><label class="lbl">Edge softness <span id="softVal">1</span></label>
+        <input type="range" id="soft" min="0" max="10" value="1"></div>
       </div>
       <div class="grid3 row">
         <button class="btn" id="undo">Undo</button>
@@ -153,32 +164,34 @@
     <button class="btn big" id="randomAll">🎲 Randomize everything</button>
 
     <div class="card">
-      <h2>2 · Print layers</h2>
-      <p>Three screens, printed in this order. Each one is a single flat colour.</p>
+      <h2>2 · Print layers <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--muted);">— printed in this order</span></h2>
       <div class="layer">
         <input type="color" id="bgColor" value="#1F3A5F">
-        <div><b>1 · Background</b><div class="sub"><input class="hex" id="bgHex" value="#1F3A5F" maxlength="7" spellcheck="false" aria-label="Background hex colour"></div></div>
-        <button class="lock" data-layer="bgColor" aria-pressed="false" title="Lock this colour">🔓</button>
+        <div><div class="name"><b>1 · Background</b><input class="hex" id="bgHex" value="#1F3A5F" maxlength="7" spellcheck="false" aria-label="Background hex colour"></div></div>
+        <button class="lock" data-layer="bgColor" aria-pressed="false" title="Lock: keeps this colour when randomizing or shuffling">🔓</button>
       </div>
       <div class="layer">
         <input type="color" id="handsColor" value="#D9573B">
-        <div><b>2 · Hands</b><div class="sub"><input class="hex" id="handsHex" value="#D9573B" maxlength="7" spellcheck="false" aria-label="Hands hex colour"></div></div>
-        <button class="lock" data-layer="handsColor" aria-pressed="false" title="Lock this colour">🔓</button>
+        <div><div class="name"><b>2 · Hands</b><input class="hex" id="handsHex" value="#D9573B" maxlength="7" spellcheck="false" aria-label="Hands hex colour"></div></div>
+        <button class="lock" data-layer="handsColor" aria-pressed="false" title="Lock: keeps this colour when randomizing or shuffling">🔓</button>
       </div>
       <div class="layer">
         <input type="color" id="inkColor" value="#141414">
-        <div><b>3 · Ink (photo film, on top)</b><div class="sub"><input class="hex" id="inkHex" value="#141414" maxlength="7" spellcheck="false" aria-label="Ink hex colour"></div>
+        <div><div class="name"><b>3 · Ink (on top)</b><input class="hex" id="inkHex" value="#141414" maxlength="7" spellcheck="false" aria-label="Ink hex colour"></div>
           <label class="check" style="margin:6px 0 0;"><input type="checkbox" id="inkLink"> Same colour as background</label>
         </div>
-        <button class="lock" data-layer="inkColor" aria-pressed="false" title="Lock this colour">🔓</button>
+        <button class="lock" data-layer="inkColor" aria-pressed="false" title="Lock: keeps this colour when randomizing or shuffling">🔓</button>
       </div>
       <div class="grid2 row">
-        <button class="btn" id="randomColours">🎲 Random colours</button>
-        <button class="btn" id="shuffleColours">🔀 Shuffle colours</button>
+        <button class="btn" id="randomColours" title="New random colours for the unlocked layers">🎲 Random</button>
+        <button class="btn" id="shuffleColours" title="Swap the current colours between the unlocked layers">🔀 Shuffle</button>
       </div>
-      <p style="margin:8px 0 0;">🔒 Locked layers keep their colour when you use random or shuffle.</p>
+    </div>
+   </div>
 
-      <h3 class="sub-h">Ink film</h3>
+   <div class="col">
+    <div class="card">
+      <h2>Ink film (layer 3)</h2>
       <div class="seg" id="filmSeg" style="width:100%;">
         <button data-film="solid" style="flex:1;">Solid</button>
         <button data-film="halftone" class="on" style="flex:1;">Halftone dots</button>
@@ -200,15 +213,16 @@
         <input type="range" id="dotSize" min="2" max="30" value="5" data-rnd="3,6">
       </div>
       <button class="btn row" id="rollInk">🎲 Randomize ink film</button>
-      <p style="margin:8px 0 0;">Each dice picks a value inside its blue range. To keep a slider fixed, drag both range handles to the same value.</p>
+      <p style="margin:8px 0 0;">🎲 picks inside the blue range. Drag both handles together to lock a slider.</p>
     </div>
 
     <div class="card">
       <h2>Download</h2>
       <button class="btn primary" id="download">Download PNG</button>
       <button class="btn row" id="downloadKit">Download print files (.zip)</button>
-      <p style="margin:10px 0 0;">The zip has a black-and-white film for each screen (300&nbsp;DPI, with registration marks), a transparent colour PNG for each layer, and a recipe.</p>
+      <p style="margin:8px 0 0;">Zip: a 300&nbsp;DPI film per screen with registration marks, a colour PNG per layer, and a recipe.</p>
     </div>
+   </div>
   </aside>
 </main>
 

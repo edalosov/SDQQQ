@@ -320,7 +320,7 @@ function refreshLocks() {
     btn.disabled = follows;
     btn.setAttribute('aria-pressed', String(locked[id] && !follows));
     btn.textContent = locked[id] && !follows ? '🔒' : '🔓';
-    btn.title = follows ? 'Follows the background colour' : locked[id] ? 'Locked — click to unlock' : 'Lock this colour';
+    btn.title = follows ? 'Follows the background colour' : locked[id] ? 'Locked: keeps this colour when randomizing — click to unlock' : 'Lock: keeps this colour when randomizing or shuffling';
   });
   const free = freeLayers();
   $('randomColours').disabled = free.length === 0;
@@ -400,7 +400,8 @@ document.querySelectorAll('input[data-rnd]').forEach((el) => {
   const mk = (v) => { const r = document.createElement('input'); r.type = 'range'; r.min = el.min; r.max = el.max; r.value = v; r.setAttribute('aria-label', 'Random range'); dual.appendChild(r); return r; };
   const rMin = mk(lo), rMax = mk(hi);
   const txt = document.createElement('div'); txt.className = 'range-txt';
-  el.after(dual, txt);
+  el.after(dual);
+  lbl.insertBefore(txt, lbl.querySelector('span')); // range shown next to the slider name
 
   const span = Number(el.max) - Number(el.min);
   const paint = () => {
@@ -408,7 +409,8 @@ document.querySelectorAll('input[data-rnd]').forEach((el) => {
     const fill = dual.querySelector('.fill');
     fill.style.left = ((a - el.min) / span * 100) + '%';
     fill.style.width = Math.max(0.8, (b - a) / span * 100) + '%';
-    txt.textContent = a === b ? `Locked at ${a}` : `Random range ${a}–${b}`;
+    txt.textContent = a === b ? `🔒 ${a}` : `${a}–${b}`;
+    txt.title = a === b ? 'Locked: the dice keeps this value' : 'Random range';
   };
   rMin.addEventListener('input', () => { if (+rMin.value > +rMax.value) rMax.value = rMin.value; paint(); });
   rMax.addEventListener('input', () => { if (+rMax.value < +rMin.value) rMin.value = rMax.value; paint(); });
