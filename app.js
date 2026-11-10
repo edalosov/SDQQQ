@@ -259,10 +259,31 @@ function syncInkLink() {
   const linked = $('inkLink').checked;
   if (linked) $('inkColor').value = $('bgColor').value;
   $('inkColor').disabled = linked;
-  $('inkHex').textContent = $('inkColor').value.toUpperCase();
+  $('inkHex').disabled = linked;
+  $('inkHex').value = $('inkColor').value.toUpperCase();
+  $('inkHex').classList.remove('bad');
 }
 for (const [id, hexId] of [['bgColor', 'bgHex'], ['handsColor', 'handsHex'], ['inkColor', 'inkHex']]) {
-  $(id).addEventListener('input', () => { $(hexId).textContent = $(id).value.toUpperCase(); syncInkLink(); showResult(); });
+  const pick = $(id), hex = $(hexId);
+  pick.addEventListener('input', () => { hex.value = pick.value.toUpperCase(); hex.classList.remove('bad'); syncInkLink(); showResult(); });
+  // typing a hex code updates the colour as soon as it's valid (#RGB or #RRGGBB, # optional)
+  const parse = (text, allowShort) => {
+    let v = text.trim().replace(/^#?/, '#');
+    if (allowShort && /^#[0-9a-f]{3}$/i.test(v)) v = '#' + [...v.slice(1)].map((c) => c + c).join('');
+    return /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null;
+  };
+  const apply = (v) => { pick.value = v; syncInkLink(); showResult(); };
+  hex.addEventListener('input', () => {
+    const v = parse(hex.value, false);
+    hex.classList.toggle('bad', !v && hex.value.replace('#', '').length >= 6);
+    if (v) apply(v);
+  });
+  hex.addEventListener('change', () => { // on Enter/leaving the field: also accept #RGB, else restore
+    const v = parse(hex.value, true);
+    if (v) apply(v);
+    hex.value = pick.value.toUpperCase(); hex.classList.remove('bad');
+  });
+  hex.addEventListener('keydown', (e) => { if (e.key === 'Enter') hex.blur(); });
 }
 $('inkLink').addEventListener('change', () => { syncInkLink(); showResult(); });
 document.querySelectorAll('#filmSeg button').forEach((b) => b.addEventListener('click', () => {
@@ -335,9 +356,8 @@ function inkCoverage(srcCanvas, mask) {
   const layerTone = (inHands, q) => {
     const hist = new Uint32Array(256); let n = 0;
     for (let i = 0; i < L.length; i++) if ((mask[i] >= 0.5) === inHands) { hist[Math.min(255, (L[i] * 255) | 0)]++; n++; }
-    if (!n) return 0.5;
+    if (!n || q <= 0) return -1; // empty layer (e.g. no hands selected yet) or no ink wanted
     const tone = (p) => { let acc = 0; for (let b = 0; b < 256; b++) { acc += hist[b]; if (acc >= p * n) return b / 255; } return 1; };
-    if (q <= 0) return -1; // no ink at all
     const lo = tone(0.02), hi = Math.max(lo + 0.02, tone(0.98));
     return { thr: tone(q), lo, hi };
   };
