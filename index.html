@@ -61,10 +61,14 @@
   .file.drag{border-color:var(--sel); color:var(--sel); background:rgba(47,107,255,.06);}
   .status{font-size:12px; color:var(--muted); margin-top:8px; min-height:1em;}
 
-  .layer{display:grid; grid-template-columns:44px 1fr; gap:12px; align-items:center; padding:10px 0;}
+  .layer{display:grid; grid-template-columns:44px 1fr auto; gap:12px; align-items:center; padding:10px 0;}
   .layer + .layer{border-top:1px solid var(--border);}
   .layer input[type=color]{width:44px; height:44px; border:1px solid var(--border); border-radius:8px; padding:2px; background:none; cursor:pointer;}
   .layer b{display:block; font-size:14px;}
+  .lock{width:34px; height:34px; border:1px solid var(--border); border-radius:8px; background:var(--surface); cursor:pointer; font-size:15px; align-self:start;}
+  .lock:hover:not(:disabled){border-color:#BDBAB3;}
+  .lock[aria-pressed="true"]{border-color:var(--sel); background:rgba(47,107,255,.08);}
+  .lock:disabled{opacity:.35; cursor:default;}
   .layer .sub{display:flex; gap:10px; align-items:center; font-size:12px; color:var(--muted); margin-top:4px; flex-wrap:wrap;}
   .layer select{font:inherit; font-size:12px; padding:3px 4px; border:1px solid var(--border); border-radius:6px; background:var(--surface);}
   .hex{font-family:ui-monospace, monospace; font-size:13px; width:9ch; padding:4px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); text-transform:uppercase;}
@@ -151,18 +155,25 @@
       <div class="layer">
         <input type="color" id="bgColor" value="#1F3A5F">
         <div><b>1 · Background</b><div class="sub"><input class="hex" id="bgHex" value="#1F3A5F" maxlength="7" spellcheck="false" aria-label="Background hex colour"></div></div>
+        <button class="lock" data-layer="bgColor" aria-pressed="false" title="Lock this colour">🔓</button>
       </div>
       <div class="layer">
         <input type="color" id="handsColor" value="#D9573B">
         <div><b>2 · Hands</b><div class="sub"><input class="hex" id="handsHex" value="#D9573B" maxlength="7" spellcheck="false" aria-label="Hands hex colour"></div></div>
+        <button class="lock" data-layer="handsColor" aria-pressed="false" title="Lock this colour">🔓</button>
       </div>
       <div class="layer">
         <input type="color" id="inkColor" value="#141414">
         <div><b>3 · Ink (photo film, on top)</b><div class="sub"><input class="hex" id="inkHex" value="#141414" maxlength="7" spellcheck="false" aria-label="Ink hex colour"></div>
           <label class="check" style="margin:6px 0 0;"><input type="checkbox" id="inkLink"> Same colour as background</label>
         </div>
+        <button class="lock" data-layer="inkColor" aria-pressed="false" title="Lock this colour">🔓</button>
       </div>
-      <button class="btn row" id="shuffleColours">🔀 Shuffle colours between layers</button>
+      <div class="grid2 row">
+        <button class="btn" id="randomColours">🎲 Random colours</button>
+        <button class="btn" id="shuffleColours">🔀 Shuffle colours</button>
+      </div>
+      <p style="margin:8px 0 0;">🔒 Locked layers keep their colour when you use random or shuffle.</p>
 
       <h3 class="sub-h">Ink film</h3>
       <div class="seg" id="filmSeg" style="width:100%;">

@@ -302,22 +302,78 @@ for (const [id, hexId] of [['bgColor', 'bgHex'], ['handsColor', 'handsHex'], ['i
 }
 $('inkLink').addEventListener('change', () => { syncInkLink(); showResult(); });
 
-// Shuffle the current colours between the layers (always a different arrangement).
-// With "same colour as background" on, the ink follows the background, so only
-// background and hands swap.
+// ---------- locks, random colours, shuffle ----------
+// A locked layer keeps its colour when random/shuffle is used. With "same colour as
+// background" on, the ink simply follows the background, so its own lock is off.
+const LAYERS = [['bgColor', 'bgHex'], ['handsColor', 'handsHex'], ['inkColor', 'inkHex']];
+const locked = { bgColor: false, handsColor: false, inkColor: false };
+document.querySelectorAll('.lock').forEach((btn) => btn.addEventListener('click', () => {
+  locked[btn.dataset.layer] = !locked[btn.dataset.layer];
+  refreshLocks();
+}));
+// layers that random/shuffle may change
+const freeLayers = () => ['bgColor', 'handsColor', 'inkColor']
+  .filter((id) => !locked[id] && !(id === 'inkColor' && $('inkLink').checked));
+function refreshLocks() {
+  document.querySelectorAll('.lock').forEach((btn) => {
+    const id = btn.dataset.layer, follows = id === 'inkColor' && $('inkLink').checked;
+    btn.disabled = follows;
+    btn.setAttribute('aria-pressed', String(locked[id] && !follows));
+    btn.textContent = locked[id] && !follows ? '🔒' : '🔓';
+    btn.title = follows ? 'Follows the background colour' : locked[id] ? 'Locked — click to unlock' : 'Lock this colour';
+  });
+  const free = freeLayers();
+  $('randomColours').disabled = free.length === 0;
+  $('shuffleColours').disabled = free.length < 2;
+}
+$('inkLink').addEventListener('change', refreshLocks);
+function setColours(values) { // values: {id: '#rrggbb'}
+  for (const [id, v] of Object.entries(values)) $(id).value = v;
+  for (const [id, hexId] of LAYERS) $(hexId).value = $(id).value.toUpperCase();
+  syncInkLink(); showResult();
+}
+
+// New random colours for the unlocked layers. Each one is kept clearly different
+// (in colour and lightness) from every other layer so the print stays readable.
+function randomHex() {
+  const h = Math.random() * 360, s = 0.45 + Math.random() * 0.5, l = 0.18 + Math.random() * 0.64;
+  const f = (n) => { const k = (n + h / 30) % 12, a = s * Math.min(l, 1 - l); return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return '#' + [f(0), f(8), f(4)].map((x) => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+}
+function farApart(a, b) {
+  const A = hexToRgb(a), B = hexToRgb(b);
+  const dist = Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]);
+  const lum = (c) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+  return dist > 140 && Math.abs(lum(A) - lum(B)) > 40;
+}
+$('randomColours').addEventListener('click', () => {
+  const free = freeLayers();
+  if (!free.length) return;
+  const fixed = ['bgColor', 'handsColor', 'inkColor']
+    .filter((id) => !free.includes(id) && !(id === 'inkColor' && $('inkLink').checked))
+    .map((id) => $(id).value);
+  let best = null;
+  for (let tries = 0; tries < 300 && !best; tries++) {
+    const pick = free.map(randomHex), all = [...fixed, ...pick];
+    if (all.every((a, i) => all.every((b, k) => k <= i || farApart(a, b)))) best = pick;
+  }
+  if (!best) best = free.map(randomHex); // locked colours too close to satisfy: just pick freely
+  setColours(Object.fromEntries(free.map((id, i) => [id, best[i]])));
+});
+
+// Swap the current colours between the unlocked layers (always a new arrangement).
 $('shuffleColours').addEventListener('click', () => {
-  const ids = $('inkLink').checked ? ['bgColor', 'handsColor'] : ['bgColor', 'handsColor', 'inkColor'];
+  const ids = freeLayers();
   const now = ids.map((id) => $(id).value.toLowerCase());
-  if (new Set(now).size < 2) return; // all the same colour: nothing to shuffle
+  if (ids.length < 2 || new Set(now).size < 2) return; // nothing to swap
   let next;
   do {
     next = [...now];
     for (let i = next.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [next[i], next[j]] = [next[j], next[i]]; }
   } while (next.every((v, i) => v === now[i]));
-  ids.forEach((id, i) => { $(id).value = next[i]; });
-  for (const [id, hexId] of [['bgColor', 'bgHex'], ['handsColor', 'handsHex'], ['inkColor', 'inkHex']]) $(hexId).value = $(id).value.toUpperCase();
-  syncInkLink(); showResult();
+  setColours(Object.fromEntries(ids.map((id, i) => [id, next[i]])));
 });
+refreshLocks();
 document.querySelectorAll('#filmSeg button').forEach((b) => b.addEventListener('click', () => {
   film = b.dataset.film;
   document.querySelectorAll('#filmSeg button').forEach((x) => x.classList.toggle('on', x === b));
