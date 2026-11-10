@@ -265,6 +265,82 @@ function colourLayer(rgb, mode, l, mean) {
   const k = (l - mean) / (1 - mean);
   return [rgb[0] + (255 - rgb[0]) * k, rgb[1] + (255 - rgb[1]) * k, rgb[2] + (255 - rgb[2]) * k];
 }
+// ---------- step 3: the ink layer (one screen) ----------
+let film = 'solid';
+document.querySelectorAll('#filmSeg button').forEach((b) => b.addEventListener('click', () => {
+  film = b.dataset.film;
+  document.querySelectorAll('#filmSeg button').forEach((x) => x.classList.toggle('on', x === b));
+  $('dotRow').hidden = film !== 'halftone';
+  showResult();
+}));
+for (const [id, out] of [['inkHands', 'inkHandsVal'], ['inkBg', 'inkBgVal'], ['inkSmooth', 'inkSmoothVal'], ['dotSize', 'dotSizeVal']]) {
+  $(id).addEventListener('input', () => { $(out).textContent = $(id).value; showResult(); });
+}
+$('inkColor').addEventListener('input', () => { $('inkHex').textContent = $('inkColor').value.toUpperCase(); showResult(); });
+$('inkOn').addEventListener('change', showResult);
+function showResult() { if (view !== 'result') setView('result'); else redraw(); }
+
+// Luminance after a blur: blur first, then threshold, gives the clumpy shapes of an
+// enlarged photo stencil instead of pixel noise.
+function blurredLuminance(srcCanvas, px) {
+  const w = srcCanvas.width, h = srcCanvas.height;
+  if (px <= 0) return luminance(srcCanvas);
+  const c = makeCanvas(w, h), cx = ctx2d(c);
+  cx.filter = `blur(${px}px)`;
+  cx.drawImage(srcCanvas, 0, 0);
+  return luminance(c);
+}
+
+// How much ink (0..1) lands on each pixel. Everything is sized relative to a
+// 1000px-wide image so the preview and the full-size download match.
+function inkCoverage(srcCanvas, mask) {
+  const w = srcCanvas.width, h = srcCanvas.height, scale = w / 1000;
+  const L = blurredLuminance(srcCanvas, parseInt($('inkSmooth').value) * scale);
+  const out = new Float32Array(w * h);
+  // "Ink on hands/background" = share of that layer that gets ink, read from the
+  // layer's own tones, so a darker or brighter shot on another day behaves the same.
+  // Still one film — like retouching the film by area before burning the screen.
+  const layerTone = (inHands, q) => {
+    const hist = new Uint32Array(256); let n = 0;
+    for (let i = 0; i < L.length; i++) if ((mask[i] >= 0.5) === inHands) { hist[Math.min(255, (L[i] * 255) | 0)]++; n++; }
+    if (!n) return 0.5;
+    const tone = (p) => { let acc = 0; for (let b = 0; b < 256; b++) { acc += hist[b]; if (acc >= p * n) return b / 255; } return 1; };
+    if (q <= 0) return -1; // no ink at all
+    const lo = tone(0.02), hi = Math.max(lo + 0.02, tone(0.98));
+    return { thr: tone(q), lo, hi };
+  };
+  const H_ = layerTone(true, parseInt($('inkHands').value) / 100);
+  const B_ = layerTone(false, parseInt($('inkBg').value) / 100);
+  // per pixel: normalise tone within its layer, then compare with that layer's threshold
+  const rel = new Float32Array(w * h); // >0 means "darker than the threshold" -> ink
+  for (let i = 0; i < L.length; i++) {
+    const m = mask[i];
+    const rh = H_ === -1 ? -1 : (H_.thr - L[i]) / (H_.hi - H_.lo);
+    const rb = B_ === -1 ? -1 : (B_.thr - L[i]) / (B_.hi - B_.lo);
+    rel[i] = rb + (rh - rb) * m;
+  }
+  if (film === 'solid') {
+    const aa = 0.015; // a hair of anti-aliasing on the stencil edge
+    for (let i = 0; i < out.length; i++) out[i] = smoothstep(-aa, aa, rel[i]);
+    return out;
+  }
+  // halftone: a 45° dot screen; darker tones get bigger dots
+  const cell = Math.max(2, parseInt($('dotSize').value) * scale);
+  const c = Math.SQRT1_2, edge = 0.6 / cell;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const cov = Math.min(1, Math.max(0, 0.5 + rel[i] * 1.6));
+      if (cov <= 0) continue;
+      const u = (x * c + y * c) / cell, v = (y * c - x * c) / cell;
+      const fu = u - Math.floor(u) - 0.5, fv = v - Math.floor(v) - 0.5;
+      const r = Math.sqrt(cov) * 0.7072; // dot radius that covers `cov` of the cell
+      out[i] = smoothstep(r + edge, r - edge, Math.sqrt(fu * fu + fv * fv));
+    }
+  }
+  return out;
+}
+
 function composite(srcCanvas, L, mask) {
   const w = srcCanvas.width, h = srcCanvas.height;
   const out = ctx2d(srcCanvas).getImageData(0, 0, w, h), d = out.data;
@@ -283,6 +359,14 @@ function composite(srcCanvas, L, mask) {
     d[j] = bc[0] + (hc[0] - bc[0]) * m;
     d[j + 1] = bc[1] + (hc[1] - bc[1]) * m;
     d[j + 2] = bc[2] + (hc[2] - bc[2]) * m;
+  }
+  if ($('inkOn').checked) {
+    const ink = inkCoverage(srcCanvas, mask), k = hexToRgb($('inkColor').value);
+    for (let i = 0; i < w * h; i++) {
+      const a = ink[i]; if (!a) continue;
+      const j = i * 4; // opaque ink printed on top of the colours
+      d[j] += (k[0] - d[j]) * a; d[j + 1] += (k[1] - d[j + 1]) * a; d[j + 2] += (k[2] - d[j + 2]) * a;
+    }
   }
   return out;
 }

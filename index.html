@@ -59,6 +59,8 @@
   .layer .sub{display:flex; gap:10px; align-items:center; font-size:12px; color:var(--muted); margin-top:4px; flex-wrap:wrap;}
   .layer select{font:inherit; font-size:12px; padding:3px 4px; border:1px solid var(--border); border-radius:6px; background:var(--surface);}
   .hex{font-family:ui-monospace, monospace;}
+  .check{display:flex; gap:8px; align-items:center; font-size:13px; cursor:pointer; margin-bottom:6px;}
+  .check input{accent-color:var(--accent);}
 </style>
 </head>
 <body>
@@ -118,12 +120,13 @@
 
     <div class="card">
       <h2>2 · Colours</h2>
+      <p>The flat painted colours that the ink is printed on.</p>
       <div class="layer">
         <input type="color" id="handsColor" value="#D9573B">
         <div>
           <b>Hands</b>
           <div class="sub"><span class="hex" id="handsHex">#D9573B</span>
-            <select id="handsMode"><option value="shade">Keep shading</option><option value="flat">Flat colour</option><option value="none">Original</option></select>
+            <select id="handsMode"><option value="flat">Flat colour</option><option value="shade">Keep shading</option><option value="none">Original</option></select>
           </div>
         </div>
       </div>
@@ -132,11 +135,47 @@
         <div>
           <b>Background</b>
           <div class="sub"><span class="hex" id="bgHex">#1F3A5F</span>
-            <select id="bgMode"><option value="shade">Keep shading</option><option value="flat">Flat colour</option><option value="none">Original</option></select>
+            <select id="bgMode"><option value="flat">Flat colour</option><option value="shade">Keep shading</option><option value="none">Original</option></select>
           </div>
         </div>
       </div>
-      <button class="btn primary row" id="download">Download PNG</button>
+    </div>
+
+    <div class="card">
+      <h2>3 · Ink layer (screen)</h2>
+      <p>The photo becomes one black-and-white film. Wherever it's black, ink goes on top of the colours. No greys, just solid ink or dots.</p>
+      <label class="check"><input type="checkbox" id="inkOn" checked> Print the ink layer</label>
+      <div class="layer" style="padding-top:4px;">
+        <input type="color" id="inkColor" value="#141414">
+        <div><b>Ink</b><div class="sub"><span class="hex" id="inkHex">#141414</span></div></div>
+      </div>
+      <div class="row">
+        <label class="lbl">Film</label>
+        <div class="seg" id="filmSeg" style="width:100%;">
+          <button data-film="solid" class="on" style="flex:1;">Solid</button>
+          <button data-film="halftone" style="flex:1;">Halftone dots</button>
+        </div>
+      </div>
+      <div class="row">
+        <label class="lbl">Ink on hands <span id="inkHandsVal">45</span></label>
+        <input type="range" id="inkHands" min="0" max="100" value="45">
+      </div>
+      <div class="row">
+        <label class="lbl">Ink on background <span id="inkBgVal">55</span></label>
+        <input type="range" id="inkBg" min="0" max="100" value="55">
+      </div>
+      <div class="row">
+        <label class="lbl">Detail ← → Blobby <span id="inkSmoothVal">3</span></label>
+        <input type="range" id="inkSmooth" min="0" max="20" value="3">
+      </div>
+      <div class="row" id="dotRow" hidden>
+        <label class="lbl">Dot size <span id="dotSizeVal">6</span></label>
+        <input type="range" id="dotSize" min="2" max="30" value="6">
+      </div>
+    </div>
+
+    <div class="card">
+      <button class="btn primary" id="download">Download PNG</button>
     </div>
   </aside>
 </main>
